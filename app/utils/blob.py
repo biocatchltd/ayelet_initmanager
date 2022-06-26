@@ -1,22 +1,15 @@
 import asyncio
-import logging
 
 import envolved
 from azure.storage.blob.aio import BlobServiceClient
 from pydantic import typing
-
-logger = logging.getLogger(('biocatch.' + __name__))
 
 
 def create_blob_client() -> BlobServiceClient:
     connection_string: envolved.EnvVar[str] = \
         envolved.env_var('connection_string', type=str)
     connection = connection_string.get()
-    try:
-        return BlobServiceClient.from_connection_string(connection)
-    except Exception:
-        logger.exception(f'blob connection failed')
-        raise
+    return BlobServiceClient.from_connection_string(connection)
 
 
 def get_blob_name(prefix: str, uid: str) -> str:

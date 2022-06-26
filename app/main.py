@@ -1,17 +1,36 @@
 import logging
+import zlib
 from asyncio import gather
 from typing import Tuple
 
+import aioredis
 import envolved
+import ormsgpack
 import uvicorn
 from aio_pika import IncomingMessage
+from aioredis import Redis
 from fastapi import FastAPI
 
 from app.initmanager.init_message_consumer import handle_rmq_message
-from utils import rabbitmq, redis
-from utils.blob import create_blob_client
+from app.utils import rabbitmq
+from app.utils.blob import create_blob_client
+
+INIT_MESSAGE_PROCESS_FAILURE_MESSAGE = 'exception when processing init message on rabbit mq'
+PREPARE_INIT_MANAGER_FAILURE_MESSAGE = 'exception when preparing init manager environment'
 
 logger = logging.getLogger('biocatch.' + __name__)
+TIMEOUT = 10000  # ms
+
+
+async def create_connection_pool() -> Redis:
+    redis_host: envolved.EnvVar[str] = \
+        envolved.env_var('redis_host', type=str)
+    redis_port: envolved.EnvVar[str] = \
+        envolved.env_var('redis_port', type=str)
+    host = redis_host.get()
+    port = redis_port.get()
+    return await aioredis.create_redis_pool(
+        address=(host, port), timeout=TIMEOUT)
 
 
 class InitManager(FastAPI):
@@ -28,11 +47,11 @@ class InitManager(FastAPI):
                 envolved.env_var('container_name', type=str)
             self.container = container_name.get()
             self.blob = create_blob_client()
-            self.redis = await redis.create_connection_pool()
+            self.redis = await create_connection_pool()
             self._rabbitmq_consumer = await rabbitmq.init_rabbitmq_consumer(self.consume_init)
             await self._rabbitmq_consumer.start_consuming()
         except Exception:
-            logger.exception('exception when preparing init manager environment')
+            logger.exception(PREPARE_INIT_MANAGER_FAILURE_MESSAGE)
             raise
 
     async def close(self) -> None:
@@ -43,11 +62,10 @@ class InitManager(FastAPI):
 
     async def consume_init(self, incoming_message: IncomingMessage) -> None:
         try:
-            logger.debug('received message via rabbit_mq')
             await handle_rmq_message(incoming_message, self.container, self.profiles_pref, self.ds_profiles_pref,
                                      self.blob, self.redis)
         except Exception:
-            logger.exception('exception when processing message')
+            logger.exception(INIT_MESSAGE_PROCESS_FAILURE_MESSAGE)
 
 
 app = InitManager()
@@ -65,9 +83,16 @@ async def shutdown_event() -> None:
 
 @app.get("/api/v1/get-data")
 async def get_data(uid: str) -> Tuple[bytes, bytes]:
-    profile, ds_profile = await gather(redis.hget(uid, get_key(app.profiles_pref, uid), app.redis),
-                                       redis.hget(uid, get_key(app.ds_profiles_pref, uid), app.redis))
+    profile, ds_profile = await gather(get(uid, get_key(app.profiles_pref, uid), app.redis),
+                                       get(uid, get_key(app.ds_profiles_pref, uid), app.redis))
     return profile, ds_profile
+
+
+async def get(key: str, field: str, redis: Redis) -> bytes:
+    profile = await redis.hget(key, field)
+    decompressed_profile = zlib.decompress(profile)
+    deserialized_profile = ormsgpack.unpackb(decompressed_profile)
+    return deserialized_profile
 
 
 @app.get("/api/readiness")

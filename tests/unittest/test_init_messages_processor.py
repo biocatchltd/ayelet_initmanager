@@ -10,7 +10,7 @@ from app.initmanager.init_message_consumer import handle_rmq_message
 _uid = "11"
 PROF_PREF = "pref"
 DS_PROF_PREF = "ds_pref"
-PROFILES = {f'{PROF_PREF}{_uid}': b"profile", f'{PROF_PREF}{_uid}': b"ds_profile"}
+PROFILES = {f'{PROF_PREF}{_uid}': b"profile", f'{DS_PROF_PREF}{_uid}': b"ds_profile"}
 CONTAINER = "training"
 
 
@@ -31,8 +31,6 @@ def redis_mock() -> Redis:
 
 @pytest.mark.asyncio
 async def test_init_message_handling(init_message_1, blob_mock, redis_mock):
-    with patch('utils.blob.download_user_data', return_value=PROFILES) as blob_download_mock:
-        with patch('utils.redis.hsetnx', return_value=None) as redis_hsetnx_mock:
-            await handle_rmq_message(init_message_1, CONTAINER, PROF_PREF, DS_PROF_PREF, blob_mock, redis_mock)
-            blob_download_mock.assert_called_with(_uid, CONTAINER, PROF_PREF, DS_PROF_PREF, blob_mock)
-            [redis_hsetnx_mock.assert_called_with(_uid, field, PROFILES[field], redis_mock) for field in PROFILES]
+    with patch('app.utils.blob.download_user_data', return_value=PROFILES) as blob_download_mock:
+        await handle_rmq_message(init_message_1, CONTAINER, PROF_PREF, DS_PROF_PREF, blob_mock, redis_mock)
+        blob_download_mock.assert_called_with(_uid, CONTAINER, PROF_PREF, DS_PROF_PREF, blob_mock)

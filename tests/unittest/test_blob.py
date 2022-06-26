@@ -4,7 +4,7 @@ import pytest
 from _pytest.monkeypatch import MonkeyPatch
 from azure.storage.blob.aio import BlobServiceClient
 
-from utils import blob
+from app.utils import blob
 
 connection_string = \
     'DefaultEndpointsProtocol=http;AccountName=devstoreaccount1;' \
