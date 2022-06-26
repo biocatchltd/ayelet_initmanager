@@ -1,7 +1,6 @@
 FROM python:3.8
 WORKDIR /code
 COPY ./app /code/app
-COPY ./utils /code/utils
 COPY pyproject.toml /code
 ENV PYTHONPATH=${PYTHONPATH}:${PWD}
 RUN pip3 install poetry
