@@ -15,9 +15,6 @@ from app.initmanager.init_message_consumer import handle_rmq_message
 from app.utils import rabbitmq
 from app.utils.blob import create_blob_client
 
-INIT_MESSAGE_PROCESS_FAILURE_MESSAGE = 'exception when processing init message on rabbit mq'
-PREPARE_INIT_MANAGER_FAILURE_MESSAGE = 'exception when preparing init manager environment'
-
 logger = logging.getLogger('biocatch.' + __name__)
 TIMEOUT = 10000  # ms
 
@@ -51,7 +48,7 @@ class InitManager(FastAPI):
             self._rabbitmq_consumer = await rabbitmq.init_rabbitmq_consumer(self.consume_init)
             await self._rabbitmq_consumer.start_consuming()
         except Exception:
-            logger.exception(PREPARE_INIT_MANAGER_FAILURE_MESSAGE)
+            logger.exception('exception when preparing init manager environment')
             raise
 
     async def close(self) -> None:
@@ -65,7 +62,7 @@ class InitManager(FastAPI):
             await handle_rmq_message(incoming_message, self.container, self.profiles_pref, self.ds_profiles_pref,
                                      self.blob, self.redis)
         except Exception:
-            logger.exception(INIT_MESSAGE_PROCESS_FAILURE_MESSAGE)
+            logger.exception('exception when processing init message on rabbit mq')
 
 
 app = InitManager()
