@@ -1,9 +1,6 @@
-from time import sleep
-
 import requests
 
 
-def test_readiness(im, base_url):
-    sleep(5)
+def test_readiness(container, base_url):
     resp = requests.get(base_url + "/readiness")
     assert resp.status_code == 200

@@ -1,7 +1,6 @@
-from unittest.mock import Mock
+from unittest.mock import MagicMock
 
 import pytest
-from _pytest.monkeypatch import MonkeyPatch
 from azure.storage.blob.aio import BlobServiceClient
 
 from app.utils import blob
@@ -13,18 +12,18 @@ connection_string = \
 
 
 @pytest.fixture
-def blob_mock(monkeypatch: MonkeyPatch) -> BlobServiceClient:
+def blob_mock(monkeypatch) -> BlobServiceClient:
     monkeypatch.setenv('connection_string', connection_string)
 
     def from_connection_string(connection_string):
         return None
 
     monkeypatch.setattr(BlobServiceClient, 'from_connection_string',
-                        Mock(wraps=from_connection_string))
+                        MagicMock())
     return BlobServiceClient
 
 
 @pytest.mark.asyncio
-async def test_create_blob_client(monkeypatch: MonkeyPatch, blob_mock) -> None:
+async def test_create_blob_client(monkeypatch, blob_mock) -> None:
     blob.create_blob_client()
     BlobServiceClient.from_connection_string.assert_called_with(connection_string)

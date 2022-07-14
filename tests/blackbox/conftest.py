@@ -1,8 +1,7 @@
 import logging
 
-from _pytest.fixtures import fixture
-from docker import DockerClient
 from pydantic.dataclasses import dataclass
+from pytest import fixture
 from yellowbox import temp_network
 from yellowbox.extras.azure_storage import BlobStorageService
 from yellowbox.extras.rabbit_mq import RabbitMQService
@@ -30,28 +29,18 @@ class BlackboxEnv:
     def as_dotenv(self):
         env = [
             f'EnvironmentName={self.env_name}',
-
-            f'RedisConnectionString={self.redis_host}',
-            'RedisPassword=',
             f'redis_port={self.redis_port}',
             f'redis_host={self.redis_host}',
-
             f'rabbitmq_port={self.rabbitmq_port}',
             f'rabbitmq_host={self.rabbitmq_host}',
             f'rabbitmq_exchange={self.rabbitmq_exchange}',
             f'rabbitmq_queue_name={self.rabbitmq_queue_name}',
-            f'RABBIT_URL=amqp://guest:guest@{self.rabbitmq_host}:{self.rabbitmq_port}/guest',
-            'READ_FROM_RABBIT=true',
-
-
             f'connection_string={self.connection_string}',
-
             f'container_name={self.container_name}',
             f'profiles_prefix={self.profiles_prefix}',
             f'ds_profiles_prefix={self.ds_profiles_prefix}',
             "PYTHONUNBUFFERED=1"
         ]
-
         return env
 
 
@@ -61,12 +50,12 @@ def env_name() -> str:
 
 
 @fixture
-def env_vars(env_name: str) -> BlackboxEnv:
+def env_vars(env_name) -> BlackboxEnv:
     return BlackboxEnv(env_name=env_name)
 
 
 @fixture
-def redis(docker_client: DockerClient) -> RedisService:
+def redis(docker_client) -> RedisService:
     with RedisService.run(docker_client) as service:
         yield service
 
