@@ -27,6 +27,7 @@ mypy = "^0.961"
 coverage = "^6.3.2"
 yellowbox = {version="^0.7.3", extras=["azure_storage", "redis", "rabbit_mq"]}
 types-redis = "^4.3.4"
+aiohttp = "^3.8.1"
 
 
 [build-system]
