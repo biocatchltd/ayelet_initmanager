@@ -58,6 +58,14 @@ multidict = ">=4.0,<7.0"
 requests = ">=2.21,<3.0"
 
 [[package]]
+name = "async-timeout"
+version = "4.0.2"
+description = "Timeout context manager for asyncio programs"
+category = "dev"
+optional = false
+python-versions = ">=3.6"
+
+[[package]]
 name = "atomicwrites"
 version = "1.4.1"
 description = "Atomic file writes."
@@ -534,6 +542,23 @@ python-versions = "*"
 cffi = "*"
 
 [[package]]
+name = "redis"
+version = "4.3.4"
+description = "Python client for Redis database and key-value store"
+category = "dev"
+optional = false
+python-versions = ">=3.6"
+
+[package.dependencies]
+async-timeout = ">=4.0.2"
+deprecated = ">=1.2.3"
+packaging = ">=20.4"
+
+[package.extras]
+hiredis = ["hiredis (>=1.0.0)"]
+ocsp = ["cryptography (>=36.0.1)", "pyopenssl (==20.0.1)", "requests (>=2.26.0)"]
+
+[[package]]
 name = "requests"
 version = "2.28.1"
 description = "Python HTTP for Humans."
@@ -689,6 +714,7 @@ python-versions = ">=3.7,<4.0"
 [package.dependencies]
 Deprecated = ">=1.2.13,<2.0.0"
 docker = ">=4.2.0,<6.0.0"
+redis = {version = ">=3.3.0", optional = true, markers = "extra == \"redis\" or extra == \"dev\""}
 requests = "*"
 yaspin = ">=1.0.0,<2.0.0"
 
@@ -707,7 +733,7 @@ vault = ["hvac"]
 [metadata]
 lock-version = "1.1"
 python-versions = "^3.8"
-content-hash = "d5f66d79ea4b68751c6828409bbe53023c8da05a0930dbb8587f942568a97f65"
+content-hash = "2f0989a9adc05dd827e52f611fd60c962c69c44b3118a62f057f73fce8499cb7"
 
 [metadata.files]
 aio-pika = [
@@ -721,6 +747,10 @@ anyio = [
 ]
 async-asgi-testclient = [
     {file = "async-asgi-testclient-1.4.11.tar.gz", hash = "sha256:4449ac85d512d661998ec61f91c9ae01851639611d748d81ae7f816736551792"},
+]
+async-timeout = [
+    {file = "async-timeout-4.0.2.tar.gz", hash = "sha256:2163e1640ddb52b7a8c80d0a67a08587e5d245cc9c553a74a847056bc2976b15"},
+    {file = "async_timeout-4.0.2-py3-none-any.whl", hash = "sha256:8ca1e4fcf50d07413d66d1a5e416e42cfdf5851c981d679a09851a6853383b3c"},
 ]
 atomicwrites = []
 attrs = [
@@ -1068,6 +1098,10 @@ pywin32 = [
 ]
 rabbitmq = [
     {file = "rabbitmq-0.2.0-py2.py3-none-any.whl", hash = "sha256:74cfbc0f365019a8f318cd1ad9b1f85682768568fa3816740df37509a6dfbc2d"},
+]
+redis = [
+    {file = "redis-4.3.4-py3-none-any.whl", hash = "sha256:a52d5694c9eb4292770084fa8c863f79367ca19884b329ab574d5cb2036b3e54"},
+    {file = "redis-4.3.4.tar.gz", hash = "sha256:ddf27071df4adf3821c4f2ca59d67525c3a82e5f268bed97b813cb4fabf87880"},
 ]
 requests = [
     {file = "requests-2.28.1-py3-none-any.whl", hash = "sha256:8fefa2a1a1365bf5520aac41836fbee479da67864514bdb821f31ce07ce65349"},
