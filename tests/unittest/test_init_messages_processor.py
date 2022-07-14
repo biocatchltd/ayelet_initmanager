@@ -2,8 +2,8 @@ from unittest.mock import AsyncMock, Mock, patch
 
 import pytest
 from aio_pika import IncomingMessage
-from aioredis import Redis
 from azure.storage.blob.aio import BlobServiceClient
+from redis.asyncio.client import Redis
 
 from app.initmanager.init_message_consumer import handle_rmq_message
 

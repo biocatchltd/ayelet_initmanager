@@ -1,9 +1,10 @@
-import json
 import sys
 from threading import Thread
 
+import requests
 from pytest import fixture
-from yellowbox import connect, temp_network
+from retrying import retry
+from yellowbox import connect, image_build, temp_network
 
 SERVICE_PORT = 80
 
@@ -19,20 +20,10 @@ def v1_url(base_url):
 
 
 @fixture
-def im(docker_client, env_name, env_vars, redis, rabbitmq, blob_storage):
-
-    build_log = docker_client.api.build(path=".",
-                                        tag='biocatchtest/ayelet_initmanager:testing',
-                                        rm=True)
-    for msg_b in build_log:
-        msgs = str(msg_b, 'utf-8').splitlines()
-        for msg in msgs:
-            s = json.loads(msg).get('stream')
-            if s:
-                print(s, end='', flush=True, file=sys.stderr)
-            else:
-                print(msg, file=sys.stderr)
-
+def container(docker_client, env_name, env_vars, redis, rabbitmq, blob_storage):
+    image_build.build_image(docker_client, "biocatchtest/ayelet_initmanager", remove_image=True,
+                            file=sys.stderr, spinner=True,
+                            path=".")
     with temp_network(docker_client) as network, \
             connect(network, redis) as redis_alias, \
             connect(network, rabbitmq) as rabbit_alias, \
@@ -45,7 +36,7 @@ def im(docker_client, env_name, env_vars, redis, rabbitmq, blob_storage):
 
         container = docker_client.containers.create(
             'biocatchtest/ayelet_initmanager:testing',
-            ports={SERVICE_PORT: SERVICE_PORT},
+            ports={SERVICE_PORT: 0},
             environment=env)
 
         container.start()
@@ -60,6 +51,17 @@ def im(docker_client, env_name, env_vars, redis, rabbitmq, blob_storage):
 
             pipe_thread = Thread(target=pipe)
             pipe_thread.start()
+
+            @retry(stop_max_attempt_number=10, wait_fixed=3000)
+            def check_health():
+                response = requests.get(f'http://localhost:{SERVICE_PORT}/api/v1/health')
+                try:
+                    response.raise_for_status()
+                except Exception:
+                    print('init manager healthcheck failed, retrying...', response.content)
+                    raise
+
+            check_health()
 
             yield container
         container.kill('SIGKILL')

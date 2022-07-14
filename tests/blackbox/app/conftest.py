@@ -1,15 +1,11 @@
-import logging
 from dataclasses import asdict
 
-import envolved
 from async_asgi_testclient import TestClient
 from azure.storage.blob import BlobServiceClient
 from pydantic import BaseModel
-from pytest import MonkeyPatch, fixture
+from pytest import fixture
 
 from tests.blackbox.conftest import BlackboxEnv
-
-logger = logging.getLogger('biocatch.' + __name__)
 
 
 class InitMessage(BaseModel):
@@ -35,21 +31,17 @@ def setup_env(env_vars: BlackboxEnv, redis, rabbitmq, blob_storage) -> BlackboxE
 
 
 @fixture
-def storage_client(blob_storage):
+def storage_client(env_vars, blob_storage):
     with BlobServiceClient.from_connection_string(blob_storage.connection_string) as client:
-        container_name: envolved.EnvVar[str] = \
-            envolved.env_var('container_name', type=str)
-        name = container_name.get()
-        client.create_container(name)
+        client.create_container(env_vars.container_name)
         yield client
 
 
 @fixture
-async def initmanager_client(env_name: str, setup_env: BlackboxEnv, redis, rabbitmq, blob_storage,
-                             monkeypatch: MonkeyPatch) -> TestClient:
+async def initmanager_client(env_name, setup_env, redis, rabbitmq, blob_storage, monkeypatch) -> TestClient:
     d = asdict(setup_env)
-    for key in d:
-        monkeypatch.setenv(key, d[key])
+    for key, value in d.items():
+        monkeypatch.setenv(key, value)
 
     from app.main import app
 

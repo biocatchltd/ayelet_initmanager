@@ -1,47 +1,37 @@
 import logging
 import zlib
-from asyncio import gather
-from typing import Tuple
 
-import aioredis
-import envolved
 import ormsgpack
-import uvicorn
 from aio_pika import IncomingMessage
-from aioredis import Redis
+from envolved import EnvVar, env_var
 from fastapi import FastAPI
+from redis.asyncio import Redis
 
 from app.initmanager.init_message_consumer import handle_rmq_message
 from app.utils import rabbitmq
 from app.utils.blob import create_blob_client
 
-logger = logging.getLogger('biocatch.' + __name__)
+logger = logging.getLogger('biocatch.ayelet_init_manager')
 TIMEOUT = 10000  # ms
 
 
-async def create_connection_pool() -> Redis:
-    redis_host: envolved.EnvVar[str] = \
-        envolved.env_var('redis_host', type=str)
-    redis_port: envolved.EnvVar[str] = \
-        envolved.env_var('redis_port', type=str)
+async def create_connection_pool():
+    redis_host: EnvVar[str] = env_var('redis_host', type=str)
+    redis_port: EnvVar[str] = env_var('redis_port', type=str)
     host = redis_host.get()
     port = redis_port.get()
-    return await aioredis.create_redis_pool(
-        address=(host, port), timeout=TIMEOUT)
+    return await Redis(host=host, port=port)
 
 
 class InitManager(FastAPI):
 
     async def prepare(self) -> None:
         try:
-            profiles_prefix: envolved.EnvVar[str] = \
-                envolved.env_var('profiles_prefix', type=str)
+            profiles_prefix: EnvVar[str] = env_var('profiles_prefix', type=str)
             self.profiles_pref = profiles_prefix.get()
-            ds_profiles_prefix: envolved.EnvVar[str] = \
-                envolved.env_var('ds_profiles_prefix', type=str)
+            ds_profiles_prefix: EnvVar[str] = env_var('ds_profiles_prefix', type=str)
             self.ds_profiles_pref = ds_profiles_prefix.get()
-            container_name: envolved.EnvVar[str] = \
-                envolved.env_var('container_name', type=str)
+            container_name: EnvVar[str] = env_var('container_name', type=str)
             self.container = container_name.get()
             self.blob = create_blob_client()
             self.redis = await create_connection_pool()
@@ -54,15 +44,11 @@ class InitManager(FastAPI):
     async def close(self) -> None:
         await self._rabbitmq_consumer.close()
         self.redis.close()
-        await self.redis.wait_closed()
         await self.blob.close()
 
     async def consume_init(self, incoming_message: IncomingMessage) -> None:
-        try:
-            await handle_rmq_message(incoming_message, self.container, self.profiles_pref, self.ds_profiles_pref,
-                                     self.blob, self.redis)
-        except Exception:
-            logger.exception('exception when processing init message on rabbit mq')
+        await handle_rmq_message(incoming_message, self.container, self.profiles_pref, self.ds_profiles_pref,
+                                 self.blob, self.redis)
 
 
 app = InitManager()
@@ -79,17 +65,16 @@ async def shutdown_event() -> None:
 
 
 @app.get("/api/v1/get-data")
-async def get_data(uid: str) -> Tuple[bytes, bytes]:
-    profile, ds_profile = await gather(get(uid, get_key(app.profiles_pref, uid), app.redis),
-                                       get(uid, get_key(app.ds_profiles_pref, uid), app.redis))
-    return profile, ds_profile
-
-
-async def get(key: str, field: str, redis: Redis) -> bytes:
-    profile = await redis.hget(key, field)
-    decompressed_profile = zlib.decompress(profile)
+async def get_data(uid: str):
+    profiles = await app.redis.hgetall(uid)
+    if (profiles == {}):
+        return 'user data missing'
+    profiles_decoded = {key.decode(): profiles.get(key) for key in profiles.keys()}
+    decompressed_profile = zlib.decompress(profiles_decoded[get_key(app.profiles_pref, uid)])
+    decompressed_ds_profile = zlib.decompress(profiles_decoded[get_key(app.ds_profiles_pref, uid)])
     deserialized_profile = ormsgpack.unpackb(decompressed_profile)
-    return deserialized_profile
+    deserialized_ds_profile = ormsgpack.unpackb(decompressed_ds_profile)
+    return deserialized_profile, deserialized_ds_profile
 
 
 @app.get("/api/readiness")
@@ -98,8 +83,4 @@ async def ready() -> str:
 
 
 def get_key(prefix: str, uid: str) -> str:
-    return f'{prefix}{uid}'
-
-
-if __name__ == '__main__':
-    uvicorn.run(app, host='127.0.0.1', port='8001')
+    return prefix + uid
