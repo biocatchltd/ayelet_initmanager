@@ -25,7 +25,7 @@ isort="^5.10.1"
 flake8 = {version = "*", allow-prereleases = true}
 mypy = "^0.961"
 coverage = "^6.3.2"
-yellowbox = {version="^0.7.3", extras=["azure_storage", "rabbit_mq"]}
+yellowbox = {version="^0.7.3", extras=["azure_storage", "redis", "rabbit_mq"]}
 
 
 [build-system]
