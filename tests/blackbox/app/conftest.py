@@ -1,6 +1,7 @@
 from dataclasses import asdict
 
 from async_asgi_testclient import TestClient
+from azure.core.exceptions import ResourceExistsError
 from azure.storage.blob import BlobServiceClient
 from pydantic import BaseModel
 from pytest import fixture
@@ -33,7 +34,10 @@ def setup_env(env_vars: BlackboxEnv, redis, rabbitmq, blob_storage) -> BlackboxE
 @fixture
 def storage_client(env_vars, blob_storage):
     with BlobServiceClient.from_connection_string(blob_storage.connection_string) as client:
-        client.create_container(env_vars.container_name)
+        try:
+            client.create_container(env_vars.container_name)
+        except ResourceExistsError:
+            pass
         yield client
 
 

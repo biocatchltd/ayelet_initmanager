@@ -12,7 +12,9 @@ from tests.blackbox.app.conftest import InitMessage
 from tests.blackbox.conftest import BlackboxEnv
 
 _uid = '11'
+_not_exist_uid = '12'
 INIT_MESSAGE_1 = InitMessage(uid=_uid)
+INIT_MESSAGE_2 = InitMessage(uid=_not_exist_uid)
 BLOB_PROFILE = 'profile_blob_content'
 BLOB_DS_PROFILE = 'ds_profile_blob_content'
 
@@ -62,7 +64,7 @@ async def test_verify_data_in_redis_after_init(env_vars: BlackboxEnv, initmanage
 @pytest.mark.asyncio
 async def test_error_on_get_missing_data(env_vars: BlackboxEnv, initmanager_client: TestClient, rabbit_channel,
                                          redis_client, blob_storage, storage_client):
-    send_message(env_vars, rabbit_channel, INIT_MESSAGE_1)
+    send_message(env_vars, rabbit_channel, INIT_MESSAGE_2)
     await sleep(10)
     resp = await initmanager_client.get(f'/api/v1/get-data?uid={_uid}')
     assert resp.ok
