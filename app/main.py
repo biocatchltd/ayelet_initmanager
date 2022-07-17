@@ -43,7 +43,7 @@ class InitManager(FastAPI):
 
     async def close(self) -> None:
         await self._rabbitmq_consumer.close()
-        self.redis.close()
+        await self.redis.close()
         await self.blob.close()
 
     async def consume_init(self, incoming_message: IncomingMessage) -> None:
