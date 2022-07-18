@@ -12,12 +12,13 @@ class QueueConsumer():
         await self.connection.close()
 
     async def _create_connection(self) -> AbstractRobustConnection:
-        rabbitmq_port: envolved.EnvVar[str] = \
-            envolved.env_var('rabbitmq_port', type=str)
-        port = rabbitmq_port.get()
         rabbitmq_host: envolved.EnvVar[str] = \
             envolved.env_var('rabbitmq_host', type=str)
         host = rabbitmq_host.get()
+        rabbitmq_port: envolved.EnvVar[int] = \
+            envolved.env_var('rabbitmq_port', type=int)
+        port = rabbitmq_port.get()
+
         return await aio_pika.connect_robust(host=host, port=port, timeout=6000)
 
     async def _get_channel(self):
