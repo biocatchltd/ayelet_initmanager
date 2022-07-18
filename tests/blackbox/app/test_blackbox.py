@@ -4,9 +4,9 @@ from asyncio import sleep
 import pytest
 from async_asgi_testclient import TestClient
 from azure.storage.blob import BlobServiceClient, ContainerClient
-from orjson import orjson
 from ormsgpack import ormsgpack
 from pika.adapters.blocking_connection import BlockingChannel
+from starlette.status import HTTP_500_INTERNAL_SERVER_ERROR
 
 from tests.blackbox.app.conftest import InitMessage
 from tests.blackbox.conftest import BlackboxEnv
@@ -54,21 +54,20 @@ async def test_verify_data_in_redis_after_init(env_vars: BlackboxEnv, initmanage
                                                rabbit_channel, redis_client, blob_storage, storage_client):
     upload_blob_profile(env_vars, storage_client)
     send_message(env_vars, rabbit_channel, INIT_MESSAGE_1)
-    await sleep(10)
+    await sleep(3)
     resp = await initmanager_client.get(f'/api/v1/get-data?uid={_uid}')
     assert resp.ok
-    response_list = orjson.loads(resp.content.decode())
-    assert [BLOB_PROFILE, BLOB_DS_PROFILE] == response_list
+    assert resp.json()['data'] == [BLOB_PROFILE, BLOB_DS_PROFILE]
 
 
 @pytest.mark.asyncio
 async def test_error_on_get_missing_data(env_vars: BlackboxEnv, initmanager_client: TestClient, rabbit_channel,
                                          redis_client, blob_storage, storage_client):
     send_message(env_vars, rabbit_channel, INIT_MESSAGE_2)
-    await sleep(10)
-    resp = await initmanager_client.get(f'/api/v1/get-data?uid={_uid}')
-    assert resp.ok
-    assert resp.content == b'"user data missing"'
+    await sleep(3)
+    resp = await initmanager_client.get('/api/v1/get-data?uid={_uid}')
+    assert resp.status_code == HTTP_500_INTERNAL_SERVER_ERROR
+    assert resp.content.decode() == "no profile retrieved"
 
 
 def send_message(env_vars: BlackboxEnv, channel: BlockingChannel, message: InitMessage):

@@ -14,9 +14,9 @@ logger = logging.getLogger('biocatch.' + __name__)
 class BlackboxEnv:
     env_name: str = ""
     redis_host: str = ""
-    redis_port: str = "6379"
+    redis_port: int = 6379
     rabbitmq_host: str = ""
-    rabbitmq_port: str = "5672"
+    rabbitmq_port: int = 5672
     rabbitmq_exchange: str = "initmanagerblackbox"
     rabbitmq_queue_name: str = ""
     rabbitmq_queue_username: str = ""

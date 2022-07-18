@@ -6,8 +6,11 @@ from aio_pika import IncomingMessage
 from envolved import EnvVar, env_var
 from fastapi import FastAPI
 from redis.asyncio import Redis
+from starlette.responses import Response
+from starlette.status import HTTP_500_INTERNAL_SERVER_ERROR
 
 from app.initmanager.init_message_consumer import handle_rmq_message
+from app.model import GetDataResponse
 from app.utils import rabbitmq
 from app.utils.blob import create_blob_client
 
@@ -17,7 +20,7 @@ TIMEOUT = 10000  # ms
 
 async def create_connection_pool():
     redis_host: EnvVar[str] = env_var('redis_host', type=str)
-    redis_port: EnvVar[str] = env_var('redis_port', type=str)
+    redis_port: EnvVar[int] = env_var('redis_port', type=int)
     host = redis_host.get()
     port = redis_port.get()
     return await Redis(host=host, port=port)
@@ -64,17 +67,17 @@ async def shutdown_event() -> None:
     await app.close()
 
 
-@app.get("/api/v1/get-data")
+@app.get("/api/v1/get-data", response_model=GetDataResponse)
 async def get_data(uid: str):
     profiles = await app.redis.hgetall(uid)
-    if (profiles == {}):
-        return 'user data missing'
-    profiles_decoded = {key.decode(): profiles.get(key) for key in profiles.keys()}
-    decompressed_profile = zlib.decompress(profiles_decoded[get_key(app.profiles_pref, uid)])
-    decompressed_ds_profile = zlib.decompress(profiles_decoded[get_key(app.ds_profiles_pref, uid)])
+    if profiles == {}:
+        return Response(status_code=HTTP_500_INTERNAL_SERVER_ERROR,
+                        content="no profile retrieved")
+    decompressed_profile = zlib.decompress(profiles[get_key(app.profiles_pref, uid).encode()])
+    decompressed_ds_profile = zlib.decompress(profiles[get_key(app.ds_profiles_pref, uid).encode()])
     deserialized_profile = ormsgpack.unpackb(decompressed_profile)
     deserialized_ds_profile = ormsgpack.unpackb(decompressed_ds_profile)
-    return deserialized_profile, deserialized_ds_profile
+    return GetDataResponse(data=(deserialized_profile, deserialized_ds_profile))
 
 
 @app.get("/api/readiness")
