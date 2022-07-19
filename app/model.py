@@ -4,4 +4,4 @@ from pydantic import BaseModel
 
 
 class GetDataResponse(BaseModel):
-    data: List[str] = []
+    data: List[str]
