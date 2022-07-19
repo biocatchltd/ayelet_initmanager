@@ -6,7 +6,7 @@ from async_asgi_testclient import TestClient
 from azure.storage.blob import BlobServiceClient, ContainerClient
 from ormsgpack import ormsgpack
 from pika.adapters.blocking_connection import BlockingChannel
-from starlette.status import HTTP_500_INTERNAL_SERVER_ERROR
+from starlette.status import HTTP_404_NOT_FOUND
 
 from tests.blackbox.app.conftest import InitMessage
 from tests.blackbox.conftest import BlackboxEnv
@@ -66,7 +66,7 @@ async def test_error_on_get_missing_data(env_vars: BlackboxEnv, initmanager_clie
     send_message(env_vars, rabbit_channel, INIT_MESSAGE_2)
     await sleep(3)
     resp = await initmanager_client.get('/api/v1/get-data?uid={_uid}')
-    assert resp.status_code == HTTP_500_INTERNAL_SERVER_ERROR
+    assert resp.status_code == HTTP_404_NOT_FOUND
     assert resp.content.decode() == "no profile retrieved"
 
 

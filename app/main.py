@@ -7,7 +7,7 @@ from envolved import EnvVar, env_var
 from fastapi import FastAPI
 from redis.asyncio import Redis
 from starlette.responses import Response
-from starlette.status import HTTP_500_INTERNAL_SERVER_ERROR
+from starlette.status import HTTP_404_NOT_FOUND
 
 from app.initmanager.init_message_consumer import handle_rmq_message
 from app.model import GetDataResponse
@@ -71,7 +71,7 @@ async def shutdown_event() -> None:
 async def get_data(uid: str):
     profiles = await app.redis.hgetall(uid)
     if profiles == {}:
-        return Response(status_code=HTTP_500_INTERNAL_SERVER_ERROR,
+        return Response(status_code=HTTP_404_NOT_FOUND,
                         content="no profile retrieved")
     decompressed_profile = zlib.decompress(profiles[get_key(app.profiles_pref, uid).encode()])
     decompressed_ds_profile = zlib.decompress(profiles[get_key(app.ds_profiles_pref, uid).encode()])
